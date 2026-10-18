@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CPPEOS Prototype (SE 460 Final Project)</title>
+<!--
+  CPPEOS: Campus Parking Permit, Enforcement and Event Overflow System
+  SE 460-70 Software Analysis, Saint Cloud State University
+  Rowda Boru, Kayden Denne-Brown, Amber Patterson, Jondi Zanzu
+
+  Working prototype for the Module 7 final project.
+  Covers product use cases PUC-01, PUC-02, PUC-03 and PUC-04.
+  All data is simulated. No live cameras, payments, or university system connections.
+
+  To run: open this file in any web browser. No server or internet connection required.
+-->
+<style>
+  :root{ color-scheme: light; }
+  img{ max-width:100%; }
+
+  :root{
+    --bg:#f4f5f7; --panel:#fff; --ink:#1b2430; --muted:#5d6b7a; --line:#d8dde3;
+    --accent:#1f4e79; --accent-soft:#e8eff6;
+    --ok:#1d6b3f; --ok-soft:#e4f1e9; --warn:#8a5a00; --warn-soft:#fbf0d9;
+    --bad:#9b2226; --bad-soft:#fbe6e6;
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#141820; --panel:#1c222c; --ink:#e8edf3; --muted:#9aa7b5; --line:#2d3643;
+    --accent:#7fb2e0; --accent-soft:#1d2b3a;
+    --ok:#73c795; --ok-soft:#182c21; --warn:#e0b25f; --warn-soft:#2e2615;
+    --bad:#e98c8f; --bad-soft:#2e1a1b; color-scheme:dark;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#141820; --panel:#1c222c; --ink:#e8edf3; --muted:#9aa7b5; --line:#2d3643;
+    --accent:#7fb2e0; --accent-soft:#1d2b3a;
+    --ok:#73c795; --ok-soft:#182c21; --warn:#e0b25f; --warn-soft:#2e2615;
+    --bad:#e98c8f; --bad-soft:#2e1a1b; color-scheme:dark;
+  }
+
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);margin:0;
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+  .banner{background:var(--warn-soft);color:var(--warn);border-bottom:1px solid var(--line);
+    padding-block:6px;font-size:12px;text-align:center}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding-block:14px;
+    display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+  header b{font-size:16px}
+  header span{display:block;color:var(--muted);font-size:12px}
+
+  .tabs{display:flex;flex-wrap:wrap;gap:6px}
+  .tabs button{background:transparent;border:1px solid var(--line);color:var(--muted);font:inherit;
+    font-size:12.5px;padding:7px 12px;border-radius:999px;cursor:pointer}
+  .tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--panel);font-weight:600}
+
+  main{max-width:860px;margin:20px auto;padding-block:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px}
+  .tag{display:inline-block;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;
+    padding:2px 7px;border-radius:4px;letter-spacing:.04em}
+  h2{margin:8px 0 2px;font-size:17px}
+  .lede{color:var(--muted);margin:0 0 16px;font-size:13px}
+
+  label{display:block;font-size:12.5px;font-weight:600;margin:12px 0 5px}
+  input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;
+    background:var(--bg);color:var(--ink);font:inherit;font-size:13.5px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:560px){.row{grid-template-columns:1fr}}
+
+  button.go{background:var(--accent);color:var(--panel);border:0;padding:9px 15px;border-radius:7px;
+    cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;margin:14px 8px 0 0}
+  button.go.alt{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:500}
+
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+
+  .note{border-left:3px solid;padding:11px 13px;border-radius:0 7px 7px 0;margin:14px 0;font-size:13px}
+  .note>b:first-child{display:block;margin-bottom:2px}
+  .ok{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}
+  .warn{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}
+  .bad{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+  .info{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+
+  .pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)}
+  .pill.bad{background:var(--bad-soft);color:var(--bad)}
+  .mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace}
+  .tiny{font-size:11.5px;color:var(--muted)}
+  .stale{color:var(--warn);font-weight:600}
+  footer{max-width:860px;margin:0 auto 28px;color:var(--muted);font-size:11.5px}
+</style>
+</head>
+<body>
+
+<div class="banner gutter">PROTOTYPE - simulated data. No live cameras, payments, or university system connections.</div>
+
+<header class="gutter">
+  <div><b>CPPEOS</b><span>Campus Parking Permit, Enforcement &amp; Event Overflow System</span></div>
+  <div class="tabs" id="tabs"></div>
+</header>
+
+<main class="gutter" id="main"></main>
+<footer class="gutter">SE 460-70 · Rowda Boru, Kayden Denne-Brown, Amber Patterson, Jondi Zanzu. Each screen is labelled with the product use case it implements.</footer>
+
+<script>
+
+// --- sample data -----------------------------------------------------------
+const lots = [
+  {id:'A', name:'Lot A - North Commuter', cap:420, occ:389, allows:['Commuter','Staff'], ago:6},
+  {id:'B', name:'Lot B - Residence West', cap:260, occ:201, allows:['Resident'],         ago:14},
+  {id:'C', name:'Lot C - Stadium',        cap:600, occ:112, allows:['Commuter','Event'], ago:3},
+  {id:'D', name:'Lot D - Administration', cap:140, occ:131, allows:['Staff'],            ago:94}
+];
+let permits = [
+  {id:'P-10234', holder:'A. Patterson',   type:'Commuter', plate:'MN 482-KJH', lots:['A','C'], status:'Active'},
+  {id:'P-10871', holder:'J. Zanzu',       type:'Resident', plate:'MN 771-BQR', lots:['B'],     status:'Active'},
+  {id:'P-10455', holder:'K. Denne-Brown', type:'Staff',    plate:'MN 109-TTD', lots:['A','D'], status:'Expired'}
+];
+let citations = [];
+let me = 'P-10234';          // signed-in permit holder
+let check = null;            // result of the officer's last plate check
+let msg = null;              // one-off banner
+
+const STALE = 30;            // minutes before an occupancy figure is not trusted
+const HAS_EMPLOYMENT = false;// staff permits need an employment record; this applicant has none
+
+const TABS = {
+  apply:  {label:'Apply for a Permit', puc:'PUC-01'},
+  lots:   {label:'Lot Availability',   puc:'PUC-04'},
+  verify: {label:'Verify a Vehicle',   puc:'PUC-02'},
+  cite:   {label:'Issue a Citation',   puc:'PUC-03'}
+};
+let tab = 'apply';
+
+// --- helpers ---------------------------------------------------------------
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm = p => p.replace(/[\s-]/g,'').toUpperCase();
+const findPermit = plate => permits.find(p => norm(p.plate) === norm(plate));
+const lotOf = id => lots.find(l => l.id === id);
+const say = (kind,title,body) => { msg = {kind,title,body}; };
+
+// --- screens ---------------------------------------------------------------
+function screenApply(){
+  return `
+    <div class="note info"><b>Eligibility file</b>Imported Oct 17, 2026 02:00 by nightly export. Live lookup is not available in this prototype.</div>
+    <div class="row">
+      <div><label for="type">Permit type</label>
+        <select id="type"><option>Commuter</option><option>Resident</option><option>Staff</option></select></div>
+      <div><label for="plate">License plate</label><input id="plate" value="MN 630-WXC"></div>
+    </div>
+    <button class="go" onclick="applyPermit()">Submit application</button>
+    <h2 style="font-size:14px;margin-top:22px">Permits on file</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Permit</th><th>Holder</th><th>Type</th><th>Plate</th><th>Lots</th><th>Status</th></tr></thead>
+      <tbody>${permits.map(p=>`<tr>
+        <td class="mono">${esc(p.id)}</td><td>${esc(p.holder)}</td><td>${esc(p.type)}</td>
+        <td class="mono">${esc(p.plate)}</td><td>${p.lots.join(', ')}</td>
+        <td><span class="pill ${p.status==='Active'?'ok':'bad'}">${esc(p.status)}</span></td></tr>`).join('')}
+      </tbody></table></div>`;
+}
+
+function applyPermit(){
+  const type = $('type').value, plate = $('plate').value.trim();
+  if(!plate) return say('bad','Application incomplete','Enter a license plate before submitting.'), render();
+  const dupe = findPermit(plate);
+  if(dupe) return say('bad','Plate already registered',`Plate ${esc(plate)} is attached to permit ${esc(dupe.id)}.`), render();
+  if(type === 'Staff' && !HAS_EMPLOYMENT)
+    return say('bad','Application denied','The eligibility file has no active employment record for this applicant, so a Staff permit cannot be issued.'), render();
+
+  const id = 'P-1' + Math.floor(1000 + Math.random()*8999);
+  const allowed = type === 'Commuter' ? ['A','C'] : type === 'Resident' ? ['B'] : ['A','D'];
+  permits.push({id, holder:'A. Patterson', type, plate:plate.toUpperCase(), lots:allowed, status:'Active'});
+  me = id;
+  say('ok','Permit issued',`Permit <b>${esc(id)}</b> is active for ${esc(type)} parking in Lot ${allowed.join(' and Lot ')}.`);
+  render();
+}
+
+function screenLots(){
+  const mine = permits.find(p => p.id === me);
+  const allowed = mine ? mine.lots : [];
+  return `
+    <div class="scroll"><table>
+      <thead><tr><th>Lot</th><th>Estimated availability</th><th>Your access</th></tr></thead>
+      <tbody>${lots.map(l=>{
+        const stale = l.ago > STALE, open = l.cap - l.occ;
+        return `<tr>
+          <td><b>${esc(l.name)}</b><div class="tiny">Permits: ${l.allows.join(', ')}</div></td>
+          <td>${stale
+            ? `<span class="stale">Not current</span><div class="tiny stale">Last updated ${l.ago} min ago - too old to rely on</div>`
+            : `<b class="mono">${open}</b> of ${l.cap} open<div class="tiny">Last updated ${l.ago} min ago</div>`}</td>
+          <td>${allowed.includes(l.id)
+            ? '<span class="pill ok">Your permit allows</span>'
+            : '<span class="pill bad">Not your permit</span>'}</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+}
+
+function screenVerify(){
+  let out = '';
+  if(check){
+    const p = check.permit, l = lotOf(check.lot);
+    const covered = p && p.status === 'Active' && p.lots.includes(check.lot);
+
+    if(check.conf < 85) out += `<div class="note warn"><b>Low-confidence plate read (${check.conf}%)</b>
+      The camera read may be wrong. Confirm the plate by sight or re-enter it before taking any action.</div>`;
+
+    if(!p)                      out += `<div class="note bad"><b>No permit found</b>No permit is attached to plate <b class="mono">${esc(check.plate)}</b>.</div>`;
+    else if(p.status!=='Active')out += `<div class="note bad"><b>Permit expired</b>Permit ${esc(p.id)} (${esc(p.type)}) is expired.</div>`;
+    else if(covered)            out += `<div class="note ok"><b>Authorized</b>Permit ${esc(p.id)} (${esc(p.type)}) covers ${esc(l.name)}. No action needed.</div>`;
+    else                        out += `<div class="note bad"><b>Not authorized for this lot</b>Permit ${esc(p.id)} is valid for Lot ${p.lots.join(', Lot ')} but not ${esc(l.name)}.</div>`;
+
+    out += `<div class="note info"><b>Record currency</b>Permit records last imported Oct 17, 2026 02:00. A permit bought after that time will not appear yet.</div>`;
+    if(!covered) out += `<button class="go" onclick="startCitation()">Continue to citation</button>`;
+    out += `<button class="go alt" onclick="check=null;render()">Clear</button>`;
+  }
+  return `
+    <div class="row">
+      <div><label for="vlot">Lot</label>
+        <select id="vlot">${lots.map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('')}</select></div>
+      <div><label for="vplate">License plate</label>
+        <input id="vplate" value="${check ? esc(check.plate) : 'MN 771-BQR'}"></div>
+    </div>
+    <button class="go" onclick="runCheck(100)">Check plate</button>
+    <button class="go alt" onclick="simulateRead()">Simulate camera read</button>
+    ${out}`;
+}
+
+function runCheck(conf){
+  const plate = $('vplate').value.trim();
+  if(!plate) return say('bad','No plate entered','Enter a plate number or use a simulated camera read.'), render();
+  check = {plate:plate.toUpperCase(), lot:$('vlot').value, conf, permit:findPermit(plate) || null};
+  render();
+}
+function simulateRead(){
+  const pool = ['MN 771-BQR','MN 482-KJH','MN 109-TTD','MN 553-OQ0'];
+  $('vplate').value = pool[Math.floor(Math.random()*pool.length)];
+  // a camera read is sometimes poor; below 85% the officer must confirm it
+  runCheck(Math.random() < 0.4 ? Math.floor(55+Math.random()*28) : Math.floor(90+Math.random()*10));
+}
+function startCitation(){ tab = 'cite'; render(); }
+
+function screenCite(){
+  if(!check) return `<div class="note info"><b>No vehicle selected</b>Go to <b>Verify a Vehicle</b>, check a plate, then continue to a citation.</div>${citeHistory()}`;
+  const l = lotOf(check.lot);
+  return `
+    ${check.conf < 85 ? `<div class="note warn"><b>Plate read confidence was ${check.conf}%</b>Correct the plate below if it does not match the vehicle in front of you.</div>` : ''}
+    <div class="row">
+      <div><label for="cplate">Plate (editable)</label><input id="cplate" class="mono" value="${esc(check.plate)}"></div>
+      <div><label for="clot">Lot</label><input id="clot" value="${esc(l.name)}" readonly></div>
+    </div>
+    <label for="cviol">Violation</label>
+    <select id="cviol">
+      <option>No valid permit for this lot</option>
+      <option>Expired permit</option>
+      <option>Accessible space without authorization</option>
+    </select>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-weight:500;margin-top:16px">
+      <input type="checkbox" id="confirm" style="width:auto;margin-top:3px">
+      <span class="tiny" style="color:var(--ink)">I confirm I have visually verified this plate and the violation.</span>
+    </label>
+    <button class="go" onclick="issueCitation()">Issue citation</button>
+    <button class="go alt" onclick="check=null;render()">Cancel</button>
+    ${citeHistory()}`;
+}
+function citeHistory(){
+  if(!citations.length) return '';
+  return `<h2 style="font-size:14px;margin-top:22px">Citations issued</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Citation</th><th>Plate</th><th>Lot</th><th>Violation</th></tr></thead>
+      <tbody>${citations.map(c=>`<tr><td class="mono">${esc(c.id)}</td><td class="mono">${esc(c.plate)}</td>
+        <td>Lot ${esc(c.lot)}</td><td>${esc(c.violation)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function issueCitation(){
+  if(!$('confirm').checked)
+    return say('bad','Confirmation required','A citation cannot be issued until the officer confirms the plate was visually verified.'), render();
+  const id = 'C-' + (4490 + citations.length + 1);
+  citations.push({id, plate:$('cplate').value.trim().toUpperCase(), lot:check.lot, violation:$('cviol').value});
+  say('ok','Citation issued',`Citation <b>${esc(id)}</b> recorded. The permit holder may appeal it.`);
+  check = null;
+  render();
+}
+
+// --- render ----------------------------------------------------------------
+const VIEWS = {apply:screenApply, lots:screenLots, verify:screenVerify, cite:screenCite};
+const LEDE = {
+  apply: 'Eligibility is checked against the imported student file. The import date is shown so the applicant knows how current it is.',
+  lots:  'Occupancy is an estimate from the last update, not a live count. A lot not updated within 30 minutes is shown as not current rather than as open space.',
+  verify:'Select the lot, then read a plate or type it in. The system reports whether a permit covers that lot. It does not issue anything on its own.',
+  cite:  'The officer confirms the plate before the citation is saved. The system never issues a citation on its own.'
+};
+
+function render(){
+  $('tabs').innerHTML = Object.entries(TABS).map(([k,v]) =>
+    `<button onclick="tab='${k}';render()" aria-pressed="${k===tab}">${esc(v.label)}</button>`).join('');
+
+  const banner = msg ? `<div class="note ${msg.kind}"><b>${esc(msg.title)}</b>${msg.body}</div>` : '';
+  msg = null;
+
+  $('main').innerHTML = banner + `<section class="card">
+    <span class="tag">${esc(TABS[tab].puc)}</span>
+    <h2>${esc(TABS[tab].label)}</h2>
+    <p class="lede">${esc(LEDE[tab])}</p>
+    ${VIEWS[tab]()}
+  </section>`;
+}
+render();
+</script>
+</body>
+</html>
